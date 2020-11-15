@@ -1,0 +1,231 @@
+<html>
+
+<head>
+    <style>
+        body {
+            background-color: #444444;
+        }
+    </style>
+</head>
+
+<body>
+    <button id="toggle">renderWorld</button><br/>
+    <canvas id='tile' width="32" height="32" style="display:none">
+    </canvas>
+    <canvas id="world" width="608" height="368">
+    </canvas>
+    <script>
+        var cols = 29;
+        var tile_width = 32;
+        var rows = 29;
+        var tile_height = 16;
+        var y_offset = 64;
+
+        var h_tw = tile_width / 2;
+        var h_th = tile_height / 2;
+
+        var frames = 0;
+        var fps = "- fps";
+
+        setInterval(function() {
+            fps = frames + " fps";
+            frames = 0;
+        }, 1000);
+
+        function updateFrames() {
+            frames++;
+            requestAnimationFrame(updateFrames);
+        };
+        updateFrames();
+
+        var can = document.getElementById('tile');
+        var ctx = can.getContext('2d');
+
+        var wcan = document.getElementById('world');
+        var wctx = wcan.getContext('2d');
+        wcan.width = cols * tile_width;
+        wcan.height = rows * tile_height + y_offset;
+
+        tiles = initTiles();
+
+
+        document.getElementById('toggle').addEventListener('click', function() {
+            if (this.innerHTML == 'renderWorld') {
+                renderFn = renderWorldNoOverdraw;
+                this.innerHTML = "renderWorldNoOverdraw";
+            } else {
+                renderFn = renderWorld;
+                this.innerHTML = "renderWorld";
+            }
+        });
+
+        //renderWorld();
+        var ani_x = cols - 1;
+        var ani_y = 0;
+        var renderFn = renderWorld;
+        ani();
+
+
+        function initTiles() {
+            var tiles = [];
+
+            for (var y = 0; y < rows; y++) {
+                var row = [];
+                for (var x = 0; x < cols; x++) {
+                    var can = document.createElement('canvas');
+                    can.width = tile_width;
+                    can.height = tile_height + y_offset;
+                    row[x] = can;
+                }
+                tiles[y] = row;
+            }
+            return tiles;
+        }
+
+        function ani() {
+            var maxD = 10;
+            var ranD = Math.floor(Math.random() * maxD);
+            for (let i = 0; i < ranD; i++) {
+              var can = tiles[ani_y][ani_x]
+              var ctx = can.getContext('2d');
+              randTile(can, ctx);
+
+              if (--ani_x == 0) ani_x = cols - 1, ani_y++;
+              ani_y %= rows;
+            }
+
+            renderFn();
+
+            setTimeout(ani, 100);
+        }
+
+        // renders from bottom left to right and skips
+        // drawing over pixels already present.
+        function renderWorldNoOverdraw() {
+            //frames++;
+            wctx.clearRect(0, 0, wcan.width, wcan.height);
+            wctx.save();
+            wctx.globalCompositeOperation = "destination-over";
+            wctx.translate(0, y_offset);
+            var x_off = 0;
+            var y_off = 0;
+            var y_off2 = 0;
+            for (var y = rows; y--;) {
+                x_off = (cols * h_tw) - ((rows - y) * h_tw);
+                y_off = y * h_th + tile_height;
+                y_off2 = y_off;
+                for (var x = 0; x < cols; x++) {
+                    var can = tiles[y][x];
+                    wctx.drawImage(can, x_off, y_off2 + y_offset);
+                    y_off2 -= h_th;
+                    x_off += h_tw;
+                }
+            }
+            wctx.translate(0, -y_offset);
+            wctx.fillStyle = "#ddaadd";
+            wctx.fillRect(0, 0, wcan.width, wcan.height);
+            wctx.restore();
+            wctx.fillStyle = "black";
+            wctx.fillText(fps, 10, 10);
+        }
+
+        function renderWorld() {
+            //frames++;
+            wctx.fillStyle = "#CCEEFF";
+            wctx.fillRect(0, 0, wcan.width, wcan.height);
+            wctx.save();
+            wctx.translate(0, y_offset);
+            var x_off = 0;
+            var y_off = 0;
+            var y_off2 = 0;
+            for (var y = 0; y < rows; y++) {
+                x_off = (cols * h_tw) + (y * h_tw) - h_tw;
+                y_off = y * h_th;
+                y_off2 = y_off;
+                for (var x = cols; x--;) {
+                    var can = tiles[y][x];
+                    wctx.drawImage(can, x_off, y_off2 - 64);
+                    y_off2 += h_th;
+                    x_off -= h_tw;
+                }
+                y_off += h_th;
+                x_off -= h_tw;
+            }
+            wctx.restore();
+            wctx.fillStyle = "black";
+            wctx.fillText(fps, 10, 10);
+        }
+
+        function randTile(can, ctx) {
+            var maxH = can.height - 44;
+            var ranH = Math.floor(Math.random() * maxH);
+            var h = Math.max(ranH, 1);
+            ctx.clearRect(0, 0, can.width, can.height);
+            ctx.beginPath();
+            ctx.save();
+            ctx.translate(0, can.height - 16);
+
+            ctx.moveTo(0, 8);
+            ctx.lineTo(16, 0);
+            ctx.lineTo(32, 8);
+            ctx.lineTo(16, 16);
+            ctx.lineTo(0, 8);
+            ctx.strokeStyle = "#333333";
+            ctx.stroke();
+
+            // random floor color
+            var colors     = ["#dd9933", "#22aa50", "#66cccc", "#996600"];
+            var colorsMid  = ["#cc8822", "#189950", "#55aaaa", "#885500"];
+            var colorsDark = ["#bb7711", "#178850", "#448888", "#663300"];
+            var ranColor = colors[Math.floor(Math.random() * 4)];
+            var rowColorIndex = Math.floor(ani_y / 2) % colors.length;
+            var rowColor = colors[rowColorIndex];
+            var rowColorMid = colorsMid[rowColorIndex];
+            var rowColorDark = colorsDark[rowColorIndex];
+            //ctx.fillStyle = ranColor;
+            ctx.fillStyle = rowColor;
+            ctx.fill();
+
+            // random building
+            //if (Math.floor(Math.random() * 1) == 0) {
+            if (Math.floor(Math.random() * 1) == 0 && ani_y % 2 === 0) {
+                ctx.beginPath();
+                ctx.moveTo(8, 8);
+                ctx.lineTo(8, -h - 4);
+                ctx.lineTo(16, -h);
+                ctx.lineTo(16, 12);
+                ctx.lineTo(8, 8);
+                ctx.stroke();
+                //ctx.fillStyle = "#333333";
+                //ctx.fillStyle = ranColor;
+                ctx.fillStyle = rowColorDark;
+                ctx.fill();
+
+                ctx.beginPath();
+                ctx.moveTo(16, 12);
+                ctx.lineTo(16, -h);
+                ctx.lineTo(24, -h - 4);
+                ctx.lineTo(24, 8);
+                ctx.lineTo(16, 12);
+                ctx.stroke();
+                //ctx.fillStyle = "#999999";
+                ctx.fillStyle = rowColorMid;
+                ctx.fill()
+
+                ctx.beginPath();
+                ctx.moveTo(16, -h);
+                ctx.lineTo(24, -h - 4);
+                ctx.lineTo(16, -h - 8);
+                ctx.lineTo(8, -h - 4);
+                ctx.moveTo(16, -h);
+                ctx.stroke();
+                //ctx.fillStyle = "#CCCCCC";
+                ctx.fillStyle = rowColor;
+                ctx.fill()
+            }
+            ctx.restore();
+        }
+    </script>
+</body>
+
+</html>
